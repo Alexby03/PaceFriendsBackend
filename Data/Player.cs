@@ -1,7 +1,10 @@
-﻿namespace PaceFriendsBackend.Data;
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace PaceFriendsBackend.Data;
 
 using System.ComponentModel.DataAnnotations;
 
+[Index(nameof(Email), IsUnique = true)] 
 public class Player
 {
     [Key]
@@ -9,7 +12,9 @@ public class Player
 
     [Required]
     public string FullName { get; set; } = string.Empty;
+    [Required]
     public string Email { get; set; } = string.Empty;
+    public string? Password { get; set; } 
     public int Age { get; set; }
     public double HeightCm { get; set; }
     public double WeightKg { get; set; }

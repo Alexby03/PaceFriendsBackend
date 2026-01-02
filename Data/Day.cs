@@ -12,6 +12,7 @@ public class Day
     public long TotalSteps { get; set; }
     public long TotalCalories { get; set; }
     public long TimeSpent { get; set; }
+    public long Score { get; set; }
 
     // FK Player
     public Guid PlayerID { get; set; }

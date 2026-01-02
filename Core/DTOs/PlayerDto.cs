@@ -1,11 +1,13 @@
 ﻿namespace PaceFriendsBackend.Core.DTOs;
 
 public record PlayerDto(
-    Guid PlayerId,
+    Guid? PlayerId,
     string FullName,
     string Email,
     string? Password,
-    int Age,
+    int Age, 
+    double HeightCm,
+    double WeightKg,
     string Gender,
     long TotalScore,
     int CurrentStreak,
