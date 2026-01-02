@@ -1,0 +1,6 @@
+@PaceFriendsBackend_HostAddress = http://localhost:5148
+
+GET {{PaceFriendsBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
