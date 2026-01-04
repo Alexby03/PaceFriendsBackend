@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PaceFriendsBackend.Core.DTOs;
 using PaceFriendsBackend.Core.Models;
+using PaceFriendsBackend.Core.Utils;
 
 namespace PaceFriendsBackend.Data;
 
@@ -61,7 +62,7 @@ public class PaceFriendsRepository
         if (player == null) 
             return ServiceResult<PlayerDto>.Fail("Player not found", 404);
 
-        // Update fields
+        // UPDATE
         player.FullName = dto.FullName;
         player.Age = dto.Age;
         player.Gender = dto.Gender;
@@ -110,11 +111,13 @@ public class PaceFriendsRepository
             var player = await _dbContext.Players.FindAsync(playerId);
             if (player == null) return ServiceResult<bool>.Fail("Player not found", 404);
             
-            // Decide whether to POST or PUT
             var todayDate = sessionData.Date.Date;
             var existingDay = await _dbContext.Days
                 .FirstOrDefaultAsync(d => d.PlayerID == playerId && d.Date == todayDate);
 
+            var score = ScoreCalculator.CalculateScore(sessionData.TotalSteps, sessionData.TotalCalories,
+                sessionData.TimeSpentSeconds, sessionData.AreaInSquareMeters, sessionData.Activity);
+            
             if (existingDay == null)
             {
                 // First session of the day
@@ -126,7 +129,7 @@ public class PaceFriendsRepository
                     TotalSteps = sessionData.TotalSteps,
                     TotalCalories = sessionData.TotalCalories,
                     TimeSpent = sessionData.TimeSpentSeconds,
-                    Score = sessionData.Score,
+                    Score = score,
                     RoutePoints = sessionData.RoutePoints.Select(rp => new RoutePoint
                     {
                         Latitude = rp.Latitude,
@@ -149,7 +152,7 @@ public class PaceFriendsRepository
                 existingDay.TotalSteps += sessionData.TotalSteps;
                 existingDay.TotalCalories += sessionData.TotalCalories;
                 existingDay.TimeSpent += sessionData.TimeSpentSeconds;
-                existingDay.Score += sessionData.Score;
+                existingDay.Score += score;
 
                 var maxOrder = await _dbContext.RoutePoints
                     .Where(rp => rp.DayID == existingDay.DayID)
@@ -167,8 +170,8 @@ public class PaceFriendsRepository
                 _dbContext.RoutePoints.AddRange(newPoints);
             }
             
-            player.WeekScore += sessionData.Score;
-            player.TotalScore += sessionData.Score;
+            player.WeekScore += score;
+            player.TotalScore += score;
             player.TotalTimePlayed += sessionData.TimeSpentSeconds;
             player.WeeklySteps += sessionData.TotalSteps;
             player.LastUpdated = DateTime.UtcNow;
@@ -225,6 +228,7 @@ public class PaceFriendsRepository
             day.Date,
             day.TotalSteps,
             day.TotalCalories,
+            day.Score,
             day.RoutePoints.Select(rp => new RoutePointDto(
                 rp.Latitude,
                 rp.Longitude,

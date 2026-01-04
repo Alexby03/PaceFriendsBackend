@@ -5,5 +5,6 @@ public record DayDetailDto(
     DateTime Date,
     long Steps,
     long Calories,
+    long Score,
     List<RoutePointDto> RoutePoints
 );
