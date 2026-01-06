@@ -9,7 +9,11 @@ public record PlayerDto(
     double HeightCm,
     double WeightKg,
     string Gender,
-    long TotalScore,
     int CurrentStreak,
-    long WeekScore
+    bool CompletedDaily,
+    long WeekScore,
+    long TotalTimePlayed,
+    long WeeklySteps,
+    DateTime LastUpdated,
+    long TotalScore
 );

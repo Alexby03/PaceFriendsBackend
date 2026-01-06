@@ -76,12 +76,11 @@ public class PaceFriendsController : ControllerBase
     }
 
     // URL: GET /api/days/{dayId}
-    [HttpGet("days/{dayId}")]
-    public async Task<IActionResult> GetDayDetail(Guid dayId)
+    [HttpGet("day")]
+    public async Task<IActionResult> GetDayDetail([FromQuery] DateTime date, [FromQuery] Guid playerId)
     {
-        var result = await _repository.GetDayDetailAsync(dayId);
+        var result = await _repository.GetDayDetailAsync(date, playerId);
         if (!result.Success) return StatusCode(result.ErrorCode, result.ErrorMessage);
-
         return Ok(result.Data);
     }
 
@@ -95,6 +94,23 @@ public class PaceFriendsController : ControllerBase
         var result = await _repository.GetLeaderboardAsync();
         if (!result.Success) return StatusCode(result.ErrorCode, result.ErrorMessage);
 
+        return Ok(result.Data);
+    }
+
+    [HttpGet("winner")]
+    public async Task<IActionResult> GetWinner()
+    {
+        var result = await _repository.GetWeeklyWinnerAsync();
+        if (!result.Success) return StatusCode(result.ErrorCode, result.ErrorMessage);
+        if (result.Data == null) return StatusCode(result.ErrorCode, "Winner is null.");
+        return Ok(result.Data);
+    }
+
+    [HttpGet("player/{playerId:guid}")]
+    public async Task<IActionResult> GetPlayer(Guid playerId)
+    {
+        var result = await _repository.GetPlayerById(playerId);
+        if (!result.Success) return StatusCode(result.ErrorCode, result.ErrorMessage);
         return Ok(result.Data);
     }
 }

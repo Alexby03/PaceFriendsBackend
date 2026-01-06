@@ -2,7 +2,6 @@
 
 public static class ScoreCalculator
 {
-
     private static float TIME_FACTOR = 0.75f;
     private static float CALORIES_FACTOR = 0.15f;
     private static float AREA_FACTOR = 0.005f;

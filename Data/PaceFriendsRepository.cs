@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 using PaceFriendsBackend.Core.DTOs;
 using PaceFriendsBackend.Core.Models;
 using PaceFriendsBackend.Core.Utils;
@@ -95,6 +96,14 @@ public class PaceFriendsRepository
         if (player.Password != loginDto.Password)
             return ServiceResult<PlayerDto>.Fail("Invalid credentials", 401);
 
+        return ServiceResult<PlayerDto>.Ok(MapToPlayerDto(player));
+    }
+
+    public async Task<ServiceResult<PlayerDto>> GetPlayerById(Guid playerId)
+    {
+        var player = await _dbContext.Players.FirstOrDefaultAsync(p => p.PlayerID == playerId);
+        if (player == null)
+            return ServiceResult<PlayerDto>.Fail("No such player found", 404);
         return ServiceResult<PlayerDto>.Ok(MapToPlayerDto(player));
     }
 
@@ -214,11 +223,11 @@ public class PaceFriendsRepository
     // =================================================================
     // Get a Day eagerly
     // =================================================================
-    public async Task<ServiceResult<DayDetailDto>> GetDayDetailAsync(Guid dayId)
+    public async Task<ServiceResult<DayDetailDto>> GetDayDetailAsync(DateTime date, Guid playerId)
     {
         var day = await _dbContext.Days
             .Include(d => d.RoutePoints.OrderBy(rp => rp.SequenceOrder))
-            .FirstOrDefaultAsync(d => d.DayID == dayId);
+            .FirstOrDefaultAsync(d => d.Date.Date == date.Date && d.PlayerID == playerId);
 
         if (day == null)
             return ServiceResult<DayDetailDto>.Fail("Day entry not found", 404);
@@ -272,9 +281,122 @@ public class PaceFriendsRepository
             p.HeightCm,
             p.WeightKg,
             p.Gender,
-            p.TotalScore,
             p.CurrentStreak,
-            p.WeekScore
+            p.CompletedDaily,
+            p.WeekScore,
+            p.TotalTimePlayed,
+            p.WeeklySteps,
+            p.LastUpdated,
+            p.TotalScore
         );
+    }
+    
+    // =================================================================
+    // Reset all streaks
+    // =================================================================
+    public async Task<ServiceResult<bool>> ResetDailyStreaksAsync()
+    {
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+        try
+        {
+            var allPlayers = await _dbContext.Players.ToListAsync();
+
+            foreach (var player in allPlayers)
+            {
+                if (!player.CompletedDaily)
+                {
+                    player.CurrentStreak = 0;
+                }
+                else
+                {
+                    player.CompletedDaily = false;
+                }
+            }
+            
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return ServiceResult<bool>.Ok(true);
+        }
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            return ServiceResult<bool>.Fail(e.Message);
+        }
+    }
+
+    // =================================================================
+    // Reset leaderboard stats (weekly)
+    // =================================================================
+    public async Task<ServiceResult<bool>> ProcessWeeklyResetAsync()
+    {
+        using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+        try
+        {
+            var winner = await _dbContext.Players
+                .Where(p => p.WeekScore > 0)
+                .OrderByDescending(p => p.WeekScore)
+                .FirstOrDefaultAsync();
+            
+            if (winner != null)
+            {
+                var existingRecord = await _dbContext.WeeklyWinners.FirstOrDefaultAsync(w => w.Id == 1);
+
+                if (existingRecord == null)
+                {
+                    var newRecord = new WeeklyWinner
+                    {
+                        Id = 1,
+                        PlayerID = winner.PlayerID,
+                        FullName = winner.FullName,
+                        Score = winner.WeekScore
+                    };
+                    _dbContext.WeeklyWinners.Add(newRecord);
+                }
+                else
+                {
+                    existingRecord.PlayerID = winner.PlayerID;
+                    existingRecord.FullName = winner.FullName;
+                    existingRecord.Score = winner.WeekScore;
+                    _dbContext.WeeklyWinners.Update(existingRecord);
+                }
+            }
+            
+            var allPlayers = await _dbContext.Players.ToListAsync();
+            foreach (var player in allPlayers)
+            {
+                player.WeekScore = 0;
+                player.WeeklySteps = 0;
+            }
+
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return ServiceResult<bool>.Ok(true);
+        }
+        catch (Exception e)
+        {
+            await transaction.RollbackAsync();
+            return ServiceResult<bool>.Fail(e.Message);
+        }
+    }
+    
+    // =================================================================
+    // Get the weekly winner
+    // =================================================================
+    public async Task<ServiceResult<WeeklyWinnerDto?>> GetWeeklyWinnerAsync()
+    {
+        var winnerSnapshot = await _dbContext.WeeklyWinners
+            .FirstOrDefaultAsync(w => w.Id == 1);
+    
+        if (winnerSnapshot == null)
+        {
+            return ServiceResult<WeeklyWinnerDto?>.Fail("No weekly winner recorded yet.");
+        }
+        return ServiceResult<WeeklyWinnerDto?>.Ok(new WeeklyWinnerDto(
+            winnerSnapshot.PlayerID,
+            winnerSnapshot.FullName,
+            winnerSnapshot.Score
+        ));
     }
 }

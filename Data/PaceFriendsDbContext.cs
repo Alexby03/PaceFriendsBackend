@@ -9,6 +9,7 @@ public class PaceFriendsDbContext : DbContext
     public DbSet<Player> Players { get; set; }
     public DbSet<Day> Days { get; set; }
     public DbSet<RoutePoint> RoutePoints { get; set; }
+    public DbSet<WeeklyWinner> WeeklyWinners { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
