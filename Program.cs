@@ -8,9 +8,10 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<PaceFriendsDbContext>(options =>
     options.UseMySql(
-        connectionString, 
-        ServerVersion.AutoDetect(connectionString)
-    ));
+        connectionString,
+        new MySqlServerVersion(new Version(8, 0, 0))
+    )
+);
 builder.Services.AddScoped<PaceFriendsRepository>();
 
 builder.Services.AddQuartz(q =>
