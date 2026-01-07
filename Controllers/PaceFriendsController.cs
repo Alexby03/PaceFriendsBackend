@@ -1,19 +1,61 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using PaceFriendsBackend.Core.DTOs;
 using PaceFriendsBackend.Data;
+using System.Net.Http;
 
 namespace PaceFriendsBackend.Controllers;
-
 
 [ApiController]
 [Route("api")]
 public class PaceFriendsController : ControllerBase
 {
     private readonly PaceFriendsRepository _repository;
+    private readonly ILogger<PaceFriendsController> _logger;
+    private readonly IConfiguration _configuration;
 
-    public PaceFriendsController(PaceFriendsRepository repository)
+    public PaceFriendsController(
+        PaceFriendsRepository repository, 
+        ILogger<PaceFriendsController> logger, 
+        IConfiguration configuration)
     {
         _repository = repository;
+        _logger = logger;
+        _configuration = configuration;
+    }
+
+    // =================================================================
+    // DEBUG ENDPOINT (Check Outbound IP)
+    // =================================================================
+    [HttpGet("debug-ip")]
+    public async Task<IActionResult> GetDebugInfo()
+    {
+        _logger.LogInformation("Starting IP debug check...");
+        string outboundIp = "Unknown";
+
+        try 
+        {
+            using var client = new HttpClient();
+            outboundIp = await client.GetStringAsync("https://api.ipify.org");
+            _logger.LogInformation($"DETECTED OUTBOUND IP: {outboundIp}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to detect IP: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to detect IP", details = ex.Message });
+        }
+
+        // Check connection string (masked)
+        var connString = _configuration.GetConnectionString("DefaultConnection");
+        var maskedConnString = connString?.Replace("Pwd=Admin123_", "Pwd=*****"); 
+        
+        _logger.LogInformation($"CONNECTION STRING USED: {maskedConnString}");
+
+        return Ok(new { 
+            ip = outboundIp, 
+            connectionString = maskedConnString 
+        });
     }
 
     // =================================================================
